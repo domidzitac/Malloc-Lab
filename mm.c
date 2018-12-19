@@ -107,7 +107,7 @@ int mm_init(void)
 /*
  * mm_malloc - Allocate a block with at least size bytes of payload
  */
-void *malloc(size_t size)
+void *mm_malloc(size_t size)
 {
     size_t asize;      /* adjusted block size */
     size_t extendsize; /* amount to extend heap if no fit */
@@ -141,7 +141,7 @@ void *malloc(size_t size)
 /*
  * mm_free - Free a block
  */
-void free(void *ptr)
+void mm_free(void *ptr)
 {
     if(!ptr) return;
     size_t size = GET_SIZE(HDRP(ptr));
@@ -153,8 +153,10 @@ void free(void *ptr)
 
 
 /* Not implemented. For consistency with 15-213 malloc driver */
-void *realloc(void *oldptr, size_t size)
+void *mm_realloc(void *ptr, size_t size)
 {
+    
+	void *oldptr = ptr;
     size_t oldsize;
     void *newptr;
     
