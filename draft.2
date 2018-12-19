@@ -5,7 +5,8 @@
  *A free block containers a pointer to the previous and next free block in the free list.
  *When performing the malloc or realloc fucntions, a global pointer searches through the free list via the block pointers
  *and returns the first block that size is equal to or greater then the amount of bytes needed
- */
+*for the purpose of this lab, some of the basic fuctions of malloc and some guideline ideas were inspired from your class book, "Computer Systems: Pearson New International Edition" (Bryant & Hallaron) 
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -66,26 +67,31 @@
 #define HDRP(ptr)  ((void *)(ptr) - WSIZE)
 #define FTRP(ptr)  ((void *)(ptr) + GET_SIZE(HDRP(ptr)) - DSIZE)
 
-// address of (physically) next and previous blocks
+// address of next and previous free blocks
+#define NEXT_FP(ptr)  (*(void **)(ptr + DSIZE))
+#define PREV_FP(ptr)  (*(void **)(ptr))
+
+// address of next and previous blocks
 #define NEXT_BLKP(ptr)  ((void *)(ptr) + GET_SIZE(HDRP(ptr)))
 #define PREV_BLKP(ptr)  ((void *)(ptr) - GET_SIZE(HDRP(ptr) - WSIZE))
 
-// address of (physically) next and previous free blocks
-#define NEXT_FP(ptr)  (*(void **)(ptr + DSIZE))
-#define PREV_FP(ptr)  (*(void **)(ptr))
+
+
+
+//Helper fuctions
+static void frontInsert(void *ptr);
+static void removeBlock(void *ptr);
+static int blockChecker(void *ptr);
+static void place(void *ptr, size_t size);
+static void *findFit(size_t size);
+static void *coalesce(void *ptr);
+static void *extendedHeap(size_t words);
+
 
 //global variables
 static char *heap_ptr = 0;  //pointer to the first block
 static char *free_ptr = 0;   // pointer to the first free block
 
-//Helper fuctions
-static void *extendedHeap(size_t words);
-static void place(void *ptr, size_t size);
-static void *findFit(size_t size);
-static void *coalesce(void *ptr);
-static void frontInsert(void *ptr);
-static void removeBlock(void *ptr);
-static int blockChecker(void *ptr);
 //####################################################################### END OF MACROS AND DECLARATION OF HELPER FUNCTIONS
 
 //#######################################################################  HELPER FUNCTIONS
