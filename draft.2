@@ -97,31 +97,6 @@ static char *free_ptr = 0;   // pointer to the first free block
 //#######################################################################  HELPER FUNCTIONS
 
 
-//extendHeap - Add free block and return its block pointer
-
-static void* extendedHeap(size_t words){
-    char *ptr;
-    size_t size;
-
-    //allocate set number of bytes for alignment
-    size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;
-
-    if(size < OVERHEAD){
-        size = OVERHEAD;
-    }
-
-    if((long)(ptr = mem_sbrk(size)) == -1){
-        return NULL;
-    }
-
-   //intializes the header and footer with zeros (free block)
-    PUT(HDRP(ptr), PACK(size, 0)); //block header
-    PUT(FTRP(ptr), PACK(size, 0)); //block footer
-    PUT(HDRP(NEXT_BLKP(ptr)), PACK(0, 1)); //epilogue block
-
-    //merge if the prev block was free
-    return coalesce(ptr);
-}
 
 // coalesce - combines consecutive free blocks into one large free block. Return ptr to coalesced block
 
@@ -162,15 +137,6 @@ static void *coalesce(void *ptr){
     return ptr;
 }
 
-//insert in free list
-
-static void frontInsert(void *ptr){
-    NEXT_FP(ptr) = free_ptr;
-    PREV_FP(free_ptr) = ptr;
-    PREV_FP(ptr) = NULL;
-    free_ptr = ptr;
-}
-
 
 // remove block from free list
 
@@ -185,6 +151,43 @@ static void removeBlock(void *ptr){
 
     PREV_FP(NEXT_FP(ptr)) = PREV_FP(ptr);
 }
+
+//insert in free list
+
+static void frontInsert(void *ptr){
+    NEXT_FP(ptr) = free_ptr;
+    PREV_FP(free_ptr) = ptr;
+    PREV_FP(ptr) = NULL;
+    free_ptr = ptr;
+}
+
+//extendHeap - Add free block and return its block pointer
+
+static void* extendedHeap(size_t words){
+    char *ptr;
+    size_t size;
+
+    //allocate set number of bytes for alignment
+    size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;
+
+    if(size < OVERHEAD){
+        size = OVERHEAD;
+    }
+
+    if((long)(ptr = mem_sbrk(size)) == -1){
+        return NULL;
+    }
+
+   //intializes the header and footer with zeros (free block)
+    PUT(HDRP(ptr), PACK(size, 0)); //block header
+    PUT(FTRP(ptr), PACK(size, 0)); //block footer
+    PUT(HDRP(NEXT_BLKP(ptr)), PACK(0, 1)); //epilogue block
+
+    //merge if the prev block was free
+    return coalesce(ptr);
+}
+
+
 
 //findFit - Find a fit for a block with of needed amout or greater bytes
 
@@ -201,6 +204,33 @@ static void *findFit(size_t size){
    //return null for no fit
     return NULL;
 }
+
+
+static int blockChecker(void *ptr){
+    if(NEXT_FP(ptr) < mem_heap_lo() || NEXT_FP(ptr) > mem_heap_hi()){
+        printf("Fatal: Next free pointer %p is out of bounds\n", NEXT_FP(ptr));
+        return -1;
+    }
+
+    if(PREV_FP(ptr) < mem_heap_lo() || PREV_FP(ptr) > mem_heap_hi()){
+        printf("Fatal: Previous free pointer %p is oiut of bounds", PREV_FP(ptr));
+        return -1;
+    }
+
+    if((size_t)ptr % 8){
+        printf("Fatal: %p is not aligned", ptr);
+        return -1;
+    }
+
+    if(GET(HDRP(ptr)) != GET(FTRP(ptr))){
+        printf("Fatal: Header and footer mismatch");
+        return -1;
+    }
+
+    return 0;
+}
+
+
 
 //place - Place block of certain amount of bytes at start of free block ptr and split
 //if remainder would be at least minimum block size
@@ -254,29 +284,7 @@ int mm_check(void){
 }
 
 
-static int blockChecker(void *ptr){
-    if(NEXT_FP(ptr) < mem_heap_lo() || NEXT_FP(ptr) > mem_heap_hi()){
-        printf("Fatal: Next free pointer %p is out of bounds\n", NEXT_FP(ptr));
-        return -1;
-    }
 
-    if(PREV_FP(ptr) < mem_heap_lo() || PREV_FP(ptr) > mem_heap_hi()){
-        printf("Fatal: Previous free pointer %p is oiut of bounds", PREV_FP(ptr));
-        return -1;
-    }
-
-    if((size_t)ptr % 8){
-        printf("Fatal: %p is not aligned", ptr);
-        return -1;
-    }
-
-    if(GET(HDRP(ptr)) != GET(FTRP(ptr))){
-        printf("Fatal: Header and footer mismatch");
-        return -1;
-    }
-
-    return 0;
-}
 
 //####################################################################### END OF HELPER FUNCTIONS
 
