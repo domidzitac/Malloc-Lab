@@ -94,7 +94,7 @@
 
 	//global variable
 	static char *heap_ptr = 0; //a pointer to 1st block
-static char *free_ptr = 0; //a pointer to 1st free block
+	static char *free_ptr = 0; //a pointer to 1st free block
 	
 
 	//helper functions prototypes
@@ -104,7 +104,8 @@ static char *free_ptr = 0; //a pointer to 1st free block
 	static void *coalesce(void *ptr);
 	static void removeBlock(void *ptr);
 	static void checkBlock(void *ptr);
-static void frontInsert (void *ptr);
+	static void insertFront (void *ptr);
+	
 	
 
 	
@@ -125,16 +126,16 @@ void mm_checkheap(int ver)
 
     if ((GET_SIZE(HDRP(heap_ptr)) != DSIZE) || !GET_ALLOC(HDRP(heap_ptr)))//checks if the prologue block is aligned and allocated
         printf("Bad prologue header\n");
-    checkblock(heap_ptr);
+    checkBlock(heap_ptr);
 
     for (ptr = heap_ptr; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {//checks if the header and footer for each block in heap matches
         if (ver)
-            printblock(ptr);
-        checkblock(ptr);
+            //printblock(ptr);
+        checkBlock(ptr);
     }
 
     if (ver)
-        printblock(ptr);
+        //printblock(ptr);
     if ((GET_SIZE(HDRP(ptr)) != 0) || !(GET_ALLOC(HDRP(ptr))))//checks if the epilogue block is of si
         printf("Bad epilogue header\n");
 }
@@ -233,7 +234,7 @@ static void *coalesce(void *ptr)
     //3. If the next is not allocated and the prev is allocated, then join ptr with the next
     else if (prevAl&& !nextAl) {
         size += GET_SIZE(HDRP(NEXT_BLKP(ptr)));
-        ptr = NEXT_BLKP(ptr)
+        ptr = NEXT_BLKP(ptr);
         removeBlock(ptr);
         PUT(HDRP(ptr), PACK(size, 0));
         PUT(FTRP(ptr), PACK(size,0));
@@ -256,17 +257,14 @@ static void *coalesce(void *ptr)
 static void printBlock(void *ptr)
 {
     size_t hdsize, hdalloc, ftsize, ftalloc;
-
     hdsize = GET_SIZE(HDRP(ptr));//
     hdalloc = GET_ALLOC(HDRP(ptr));//
     ftsize = GET_SIZE(FTRP(ptr));//
     ftalloc = GET_ALLOC(FTRP(ptr));//
-
     if (hdsize == 0) {
         printf("%p: EOL\n", ptr);
         return;
     }
-
     printf("%p: header: [%d:%c] footer: [%d:%c]\n", ptr,
            (int)hsize, (hdalloc ? 'a' : 'f'),
            (int)fsize, (ftalloc ? 'a' : 'f'));
@@ -428,7 +426,7 @@ static void removeBlock(void *ptr){
 	
 
 	    //allocates new memory block of size bytes
-	    oldsize = GET_SIZE(HDRP(oldptr);
+	    oldsize = GET_SIZE(HDRP(oldptr));
 
     //checks if the old and new size are the same, returns old ptr
     if (oldsize==adjust){
@@ -467,6 +465,5 @@ static void removeBlock(void *ptr){
 	
 
 	    return newptr;
-	}
+}
 	
-
