@@ -1,8 +1,5 @@
 /**
- * @file mm.c Explicit free list implementation of malloc
- * @author Somsubhra (201101056@daiict.ac.in)
- * @brief The following implemenation of memory management is based on doubly linked
- * explicit free list and first fit algorithm.
+
  *
  * => In mm_malloc, the block is allocated by traversing the free list and finding the
  *    first free block that has size greater than the requested size. If the free
