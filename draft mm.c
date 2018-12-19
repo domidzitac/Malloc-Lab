@@ -103,7 +103,7 @@
 	static void *findFit(size_t adjust);
 	static void *coalesce(void *ptr);
 	static void removeBlock(void *ptr);
-	static void checkBlock(void *ptr);
+	static int checkBlock(void *ptr);
 	static void insertFront (void *ptr);
 	
 	
@@ -117,28 +117,28 @@
 
 	// mm_checkheap - Check the heap for consistency
 
-void mm_checkheap(int ver)
+int mm_checkheap(void)
 {
-    char *ptr = heap_ptr;
+    void *ptr = heap_ptr;  //points to the first block in the heap
+    printf("Heap (%p): \n", heap_ptr); 
 
-    if (ver)
-        printf("Heap (%p):\n", heap_ptr);
-
-    if ((GET_SIZE(HDRP(heap_ptr)) != DSIZE) || !GET_ALLOC(HDRP(heap_ptr)))//checks if the prologue block is aligned and allocated
-        printf("Bad prologue header\n");
-    checkBlock(heap_ptr);
-
-    for (ptr = heap_ptr; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {//checks if the header and footer for each block in heap matches
-        if (ver)
-            //printblock(ptr);
-        checkBlock(ptr);
+    if((GET_SIZE(HDRP(heap_ptr)) != OVERHEAD) || !GET_ALLOC(HDRP(heap_ptr))){  //If the prologue block's header's size or allocated bit is wrong
+        printf("Bad prologue header\n");                                             
+        return -1;
+    }
+    if(checkBlock(heap_ptr) == -1){ //checks the block for consistency
+        return -1;
     }
 
-    if (ver)
-        //printblock(ptr);
-    if ((GET_SIZE(HDRP(ptr)) != 0) || !(GET_ALLOC(HDRP(ptr))))//checks if the epilogue block is of si
-        printf("Bad epilogue header\n");
+    for(ptr = free_ptr; GET_ALLOC(HDRP(ptr)) == 0; ptr = NEXT_FREEP(ptr)){ //checks all the blocks of free list for consistency
+         if(checkBlock(ptr) == -1){                                                         
+                return -1;                                                              
+         }
+    }
+
+    return 0; //returns if no inconsistency
 }
+
 
 //Internal functions
 
@@ -271,12 +271,29 @@ static void printBlock(void *ptr)
 }
 */
 
-static void checkBlock(void *ptr)
+static int checkBlock(void *ptr)
 {
-    if ((size_t)ptr % 8)
-        printf("Error: %p is not doubleword aligned\n", ptr);
-    if (GET(HDRP(ptr)) != GET(FTRP(ptr)))
-printf("Error: header does not match footer\n");
+    if(NEXT_FREEP(ptr) < mem_heap_lo() || NEXT_FREEP(ptr) > mem_heap_hi()){ //if next free pointer is out of heap range
+        printf("Next free pointer %p is out of bounds\n", NEXT_FREEP(ptr)); 
+        return -1;
+    }
+
+    if(PREV_FREEP(ptr) < mem_heap_lo() || PREV_FREEP(ptr) > mem_heap_hi()){ //If previous free pointer is out of heap range
+        printf("Previous free pointer %p is oiut of bounds", PREV_FREEP(ptr));        
+        return -1;
+    }
+
+    if((size_t)ptr % 8){ //If there is no alignment
+        printf("Fatal: %p is not aligned", ptr);                                             
+        return -1;
+    }
+
+    if(GET(HDRP(ptr)) != GET(FTRP(ptr))){ //If header and footer do not match
+        printf("Fatal: Header and footer mismatch");                                        
+        return -1;
+    }
+
+    return 0;//Block is consistent
 }
 
 
