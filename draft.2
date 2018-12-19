@@ -1,5 +1,10 @@
 /**
 
+ *This version of malloc uses an explicit free list. 
+ *Each block of memory has a header and footer, that holds the size and allocation bit of that specific block
+ *A free block containers a pointer to the previous and next free block in the free list.
+ *When performing the malloc or realloc fucntions, a global pointer searches through the free list via the block pointers
+ *and returns the first block that size is equal to or greater then the amount of bytes needed
  *
 
  */
