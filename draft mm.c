@@ -114,194 +114,198 @@ static void frontInsert (void *ptr);
 
 	
 
-	//####################################################################### Definition of Helper Functions
-	
-
 	// mm_checkheap - Check the heap for consistency
-	
 
-	void mm_checkheap(int ver)
-	{
-	    char *ptr = heap_ptr;
-	
+void mm_checkheap(int ver)
+{
+    char *ptr = heap_ptr;
 
-	    if (ver)
-	        printf("Heap (%p):\n", heap_ptr);
-	
+    if (ver)
+        printf("Heap (%p):\n", heap_ptr);
 
-	    if ((GET_SIZE(HDRP(heap_ptr)) != DSIZE) || !GET_ALLOC(HDRP(heap_ptr)))//checks if the prologue block is aligned and allocated
-	        printf("Bad prologue header\n");
-	    checkblock(heap_ptr);
-	
+    if ((GET_SIZE(HDRP(heap_ptr)) != DSIZE) || !GET_ALLOC(HDRP(heap_ptr)))//checks if the prologue block is aligned and allocated
+        printf("Bad prologue header\n");
+    checkblock(heap_ptr);
 
-	    for (ptr = heap_ptr; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {//checks if the header and footer for each block in heap matches
-	        if (ver)
-	            printblock(ptr);
-	        checkblock(ptr);
-	    }
-	
+    for (ptr = heap_ptr; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {//checks if the header and footer for each block in heap matches
+        if (ver)
+            printblock(ptr);
+        checkblock(ptr);
+    }
 
-	    if (ver)
-	        printblock(ptr);
-	    if ((GET_SIZE(HDRP(ptr)) != 0) || !(GET_ALLOC(HDRP(ptr))))//checks if the epilogue block is of si
-	        printf("Bad epilogue header\n");
-	}
-	
+    if (ver)
+        printblock(ptr);
+    if ((GET_SIZE(HDRP(ptr)) != 0) || !(GET_ALLOC(HDRP(ptr))))//checks if the epilogue block is of si
+        printf("Bad epilogue header\n");
+}
 
-	//Internal functions
-	
+//Internal functions
 
-	//extendHeap - Add free block and return its block pointer
-	
+//extendHeap - Add free block and return its block pointer
 
-	static void *extendHeap(size_t wsize)
-	{
-	    void *ptr;
-	    size_t size;
-	
+static void *extendHeap(size_t wsize)
+{
+    void *ptr;
+    size_t size;
 
-	    //allocate set number of bytes for alignment
-	    size = (wsize % 2) ? (wsize+1) * WSIZE : wsize * WSIZE;
-	    if ((ptr = mem_sbrk(size)) == (void *) -1)
-	        return NULL;
-	
 
-	    //intializes the header and footer with zeros (free block)
-	    PUT(HDRP(ptr), PACK(size, 0));         //block header
-	    PUT(FTRP(ptr), PACK(size, 0));         //block footer
-	    PUT(HDRP(NEXT_BLKP(ptr)), PACK(0, 1)); //epilogue block
-	
+    //allocate set number of bytes for alignment
+    size = (wsize % 2) ? (wsize+1) * WSIZE : wsize * WSIZE;
 
-	    //merge if the prev block was free
-	    return coalesce(ptr);
-	}
-	
+    if(size < OVERHEAD){
+        size = OVERHEAD;
+    }
 
-	//place - Place block of certain amount of bytes at start of free block ptr and split if remainder would be at least minimum block size
-	
+    if ((ptr = mem_sbrk(size)) == (void *) -1)
+        return NULL;
 
-	static void place(void *ptr, size_t adjust)
-	{
-	    size_t size = GET_SIZE(HDRP(ptr)); //size of the free block
-	
+    //intializes the header and footer with zeros (free block)
+    PUT(HDRP(ptr), PACK(size, 0));         //block header
+    PUT(FTRP(ptr), PACK(size, 0));         //block footer
+    PUT(HDRP(NEXT_BLKP(ptr)), PACK(0, 1)); //epilogue block
 
-	    //checks if the size of the free block is greater than the needed space
-	    if ((size - adjust) >= (DSIZE + OVERHEAD)) {
-	        PUT(HDRP(ptr), PACK(adjust, 1)); //if yes, packs the block with adjust amount bytes and change allocated bit
-	        PUT(FTRP(ptr), PACK(adjust, 1));
-	        ptr = NEXT_BLKP(ptr); // places the remainding bits in the next block
-	        PUT(HDRP(ptr), PACK(size-adjust, 0));
-	        PUT(FTRP(ptr), PACK(size-adjust, 0));
-	    }
-	    //if not, packs the block with size amount bytes nd change allocated bit
-	    else {
-	        PUT(HDRP(ptr), PACK(size, 1));
-	        PUT(FTRP(ptr), PACK(size, 1));
-	    }
-	}
-	
+    //merge if the prev block was free
+    return coalesce(ptr);
+}
 
-	//findFit - Find a fit for a block with of needed amout or greater bytes
-	
+//place - Place block of certain amount of bytes at start of free block ptr and split if remainder would be at least minimum block size
 
-	static void *findFit(size_t adjust)
-	{
-	    void *ptr;
-	
+static void place(void *ptr, size_t adjust)
+{
+    size_t size = GET_SIZE(HDRP(ptr)); //size of the free block
 
-	    /* first fit search */
-	    for (ptr = heap_ptr; GET_SIZE(HDRP(ptr)) > 0; ptr = NEXT_BLKP(ptr)) {
-	        if (!GET_ALLOC(HDRP(ptr)) && (adjust <= GET_SIZE(HDRP(ptr)))) {//test if the block is free and greater than or equal to needed amount
-	            return ptr;
-	        }
-	    }
-	    return NULL; /* no fit */
-	}
-	
+    //checks if the size of the free block is greater than the needed space
+    if ((size - adjust) >= (DSIZE + OVERHEAD)) {
+        PUT(HDRP(ptr), PACK(adjust, 1)); //if yes, packs the block with adjust amount bytes and change allocated bit
+        PUT(FTRP(ptr), PACK(adjust, 1));
+        ptr = NEXT_BLKP(ptr); // places the remainding bits in the next block
+        PUT(HDRP(ptr), PACK(size-adjust, 0));
+        PUT(FTRP(ptr), PACK(size-adjust, 0));
+        coalesce(ptr);
+    }
+    //if not, packs the block with size amount bytes nd change allocated bit
+    else {
+        PUT(HDRP(ptr), PACK(size, 1));
+        PUT(FTRP(ptr), PACK(size, 1));
+        removeBlock(ptr);
+    }
+}
 
-	// coalesce - combines consecutive free blocks into one large free block. Return ptr to coalesced block
-	
+//findFit - Find a fit for a block with of needed amout or greater bytes
 
-	static void *coalesce(void *ptr)
-	{
-	    size_t prevAl = GET_ALLOC(FTRP(PREV_BLKP(ptr)));
-	    size_t nextAl = GET_ALLOC(HDRP(NEXT_BLKP(ptr)));
-	    size_t size = GET_SIZE(HDRP(ptr));
-	
+static void *findFit(size_t adjust)
+{
+  void *ptr;
 
-	    // 1. If they are both allocated (prev/next) then returns ptr
-	    if (prevAl && nextAl) {
-	        return ptr;
-	    }
-	
+    for(ptr = free_ptr; GET_ALLOC(HDRP(ptr)) == 0; ptr = NEXT_FREEP(ptr)){                    //Traverse the entire free list
+        if(adjust <= GET_SIZE(HDRP(ptr))){                                                     //If size fits in the available free block
+            return ptr;                                                                      //Return the block pointer
+        }
+    }
 
-	    //2. If the prev is not allocated and the next is allocated, then join ptr with the prev
-	    else if (!prevAl && nextAl) {
-	        size += GET_SIZE(HDRP(PREV_BLKP(ptr)));
-	        PUT(FTRP(ptr), PACK(size, 0));
-	        PUT(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
-	        return(PREV_BLKP(ptr));
-	    }
-	
+    return NULL;
+}
 
-	    //3. If the next is not allocated and the prev is allocated, then join ptr with the next
-	    else if (prevAl&& !nextAl) {
-	        size += GET_SIZE(HDRP(NEXT_BLKP(ptr)));
-	        PUT(HDRP(ptr), PACK(size, 0));
-	        PUT(FTRP(ptr), PACK(size,0));
-	        return(ptr);
-	    }
-	
+// coalesce - combines consecutive free blocks into one large free block. Return ptr to coalesced block
 
-	    //4. If they are both (prev/next) not allocated, they join all
-	    else {
-	        size += (GET_SIZE(HDRP(PREV_BLKP(ptr))) + GET_SIZE(FTRP(NEXT_BLKP(ptr))));
-	        PUT(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
-	        PUT(FTRP(NEXT_BLKP(ptr)), PACK(size, 0));
-	        return(PREV_BLKP(ptr));
-	    }
-	}
-	
+static void *coalesce(void *ptr)
+{
+    size_t prevAl = GET_ALLOC(FTRP(PREV_BLKP(ptr)));
+    size_t nextAl = GET_ALLOC(HDRP(NEXT_BLKP(ptr)));
+    size_t size = GET_SIZE(HDRP(ptr));
 
-	static void printBlock(void *ptr)
-	{
-	    size_t hdsize, hdalloc, ftsize, ftalloc;
-	
+    // 1. If they are both allocated (prev/next) then returns ptr
+    if (prevAl && nextAl) {
+        insertFront(ptr);
+        return ptr;
+    }
 
-	    hdsize = GET_SIZE(HDRP(ptr));//
-	    hdalloc = GET_ALLOC(HDRP(ptr));//
-	    ftsize = GET_SIZE(FTRP(ptr));//
-	    ftalloc = GET_ALLOC(FTRP(ptr));//
-	
+    //2. If the prev is not allocated and the next is allocated, then join ptr with the prev
+    else if (!prevAl && nextAl) {
+        size += GET_SIZE(HDRP(PREV_BLKP(ptr)));
+        ptr = PREV_BLKP(ptr);
+        removeBlock(ptr);
+        PUT(FTRP(ptr), PACK(size, 0));
+        PUT(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
+        return(PREV_BLKP(ptr));
+    }
 
-	    if (hdsize == 0) {
-	        printf("%p: EOL\n", ptr);
-	        return;
-	    }
-	
+    //3. If the next is not allocated and the prev is allocated, then join ptr with the next
+    else if (prevAl&& !nextAl) {
+        size += GET_SIZE(HDRP(NEXT_BLKP(ptr)));
+        ptr = NEXT_BLKP(ptr)
+        removeBlock(ptr);
+        PUT(HDRP(ptr), PACK(size, 0));
+        PUT(FTRP(ptr), PACK(size,0));
+        return(ptr);
+    }
 
-	    printf("%p: header: [%d:%c] footer: [%d:%c]\n", ptr,
-	           (int)hsize, (hdalloc ? 'a' : 'f'),
-	           (int)fsize, (ftalloc ? 'a' : 'f'));
-	}
-	
+    //4. If they are both (prev/next) not allocated, they join all
+    else {
+        size += (GET_SIZE(HDRP(PREV_BLKP(ptr))) + GET_SIZE(FTRP(NEXT_BLKP(ptr))));
+        removeBlock(PREV_BLKP(ptr));                                                        //Remove the block previous to the current block
+        removeBlock(NEXT_BLKP(ptr));                                                        //Remove the block next to the current block
+        ptr = PREV_BLKP(ptr);
+        PUT(HDRP(PREV_BLKP(ptr)), PACK(size, 0));
+        PUT(FTRP(NEXT_BLKP(ptr)), PACK(size, 0));
+        return(PREV_BLKP(ptr));
+    }
+}
 
-	static void checkBlock(void *ptr)
-	{
-	    if ((size_t)ptr % 8)
-	        printf("Error: %p is not doubleword aligned\n", ptr);
-	    if (GET(HDRP(ptr)) != GET(FTRP(ptr)))
-	printf("Error: header does not match footer\n");
-	}
-	
+/*
+static void printBlock(void *ptr)
+{
+    size_t hdsize, hdalloc, ftsize, ftalloc;
 
-	
+    hdsize = GET_SIZE(HDRP(ptr));//
+    hdalloc = GET_ALLOC(HDRP(ptr));//
+    ftsize = GET_SIZE(FTRP(ptr));//
+    ftalloc = GET_ALLOC(FTRP(ptr));//
 
-	
+    if (hdsize == 0) {
+        printf("%p: EOL\n", ptr);
+        return;
+    }
 
-	
+    printf("%p: header: [%d:%c] footer: [%d:%c]\n", ptr,
+           (int)hsize, (hdalloc ? 'a' : 'f'),
+           (int)fsize, (ftalloc ? 'a' : 'f'));
+}
+*/
 
-	
+static void checkBlock(void *ptr)
+{
+    if ((size_t)ptr % 8)
+        printf("Error: %p is not doubleword aligned\n", ptr);
+    if (GET(HDRP(ptr)) != GET(FTRP(ptr)))
+printf("Error: header does not match footer\n");
+}
+
+
+static void insertFront(void *ptr){
+    NEXT_FREEP(ptr) = free_ptr;                                                            //Sets the next pointer to the start of the free list
+    PREV_FREEP(free_ptr) = ptr;                                                            //Sets the current's previous to the new block
+    PREV_FREEP(ptr) = NULL;                                                                  //Set the previosu free pointer to NULL
+    free_ptr = ptr;                                                                        //Sets the start of the free list as the new block
+}
+
+
+static void removeBlock(void *ptr){
+    if(PREV_FREEP(ptr)){                                                                     //If there is a previous block
+        NEXT_FREEP(PREV_FREEP(ptr)) = NEXT_FREEP(ptr);                                        //Set the next pointer of the previous block to next block
+    }
+
+    else{                                                                                   //If there is no previous block
+        free_ptr = NEXT_FREEP(ptr);                                                        //Set the free list to the next block
+    }
+
+    PREV_FREEP(NEXT_FREEP(ptr)) = PREV_FREEP(ptr);                                            //Set the previous block's pointer of the next block to the previous block
+}
+
+
+
+
+
 
 	//#######################################################################
 	//The functions you provided modified
