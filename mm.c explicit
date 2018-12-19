@@ -1,22 +1,7 @@
 /**
 
  *
- * => In mm_malloc, the block is allocated by traversing the free list and finding the
- *    first free block that has size greater than the requested size. If the free
- *    block is too big then the free block is split and the first part is allocated
- *    and the rest of the part is kept free. The headers and footers of the new blocks
- *    are changed accordingly.
- *
- * => In mm_free, the block to be freed is found and its header/ footer are changed.
- *    The allocated bit is set to 0. Then the freed block is placed at the beginning of
- *    the free list. If the adjacent blocks are also free, then the freed block
- *    is coalesced with them.
- *
- * => In mm-realloc, depending on the newly requested size, if the new size is smaller
- *    than the old size, then the block is shrunk updating the header/footer. If the
- *    new size is greater than old size, then we allocate a new block with malloc, copy
- *    the old data into the new block and free the old block. If the new size is same
- *    as the old size, then the same block is returned.
+
  */
 #include <stdio.h>
 #include <stdlib.h>
